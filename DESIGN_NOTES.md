@@ -91,16 +91,53 @@ with players showing each other their photo logs. That's the Spiel des Jahres
 shape. The depth for enthusiasts lives in exposure economics and reading the
 Nature deck's probabilities.
 
-## Playtest agenda (the honest unknowns)
+## Playtest #1 → v2 (what real play taught us)
 
-1. **Point tuning** — are herds (+4) too strong vs. rare singles (rhino 8)?
+The first physical playtest confirmed the core loop and exposed four problems.
+All four shared a root cause: **the world was too opaque and too static.**
+
+1. **Unknown tile distribution felt arbitrary** → v2 uses a fixed, published
+   bag (42 grass / 12 acacia / 8 marsh / 8 water / 7 kopje) shuffled at setup,
+   Daybreak-style, and the animal manifest is public too — a Field Guide shows
+   every species, its count, and what's still hidden. Deduction becomes a
+   skill: "both leopards live in acacia or kopje, and one's still out there."
+2. **Click-to-destination movement hid the exploration** → v2 moves the jeep
+   **one tile at a time**, flipping tiles as you go — the Seafarers feel the
+   game was always about.
+3. **Animals as walls felt wrong** → animals are tokens, not terrain. You can
+   drive *through* an animal's tile; it scatters. Blocking only happens if the
+   animal literally has nowhere to go.
+4. **The board was too static; identical photos were farmable** → the animal
+   phase now runs **every round**: the Nature card steers all prey (and can
+   walk them clean off the board), predators hunt and *eat* prey every round
+   (then sleep, gorged, for the rest of the game), and — the keystone rule —
+   **"The Moment Passes"**: every animal in a photo scatters at round's end.
+   No photograph can be taken twice. Scenes are now genuinely perishable,
+   which is the entire emotional truth of photography.
+
+Scoring was simplified to the playtester's list: golden hour, assignments,
+herds, action shots, water scenes. Cut: the pair bonus, perfect-light and
+dust-storm photo modifiers, and hunt markers. Kept (judgment call): the Big
+Five +15, as the long-arc goal from the original pitch. The roster shrank from
+12 species / 36 animals to **9 species / 28 animals**, each labeled predator
+or prey — a distinction that now matters mechanically every round.
+
+## Playtest agenda for v2 (the honest unknowns)
+
+1. **Point tuning** — are herds (+4) too strong vs. rare singles (rhino 7)?
    Track winning strategies; both should be viable.
 2. **Exposure count** — 8 is the theory; watch for players finishing with 3+
-   unused (too many) or shooting everything before Day 2 (too few).
-3. **Spook radius** — adjacent-only may be too forgiving at Fast speed; the
-   alternative is "every tile you passed."
-4. **Multiplayer solitaire risk** — if players ignore each other, strengthen
-   interaction: e.g., an animal photographed 'startles' and moves 1, or first-
-   to-photograph-a-species bonuses.
-5. **Analysis paralysis at Golden Hour** — if final rounds drag, add a sand
+   unused (too many) or shooting everything before Day 2 (too few). With
+   perishable scenes, holding film is riskier now — 8 may even feel generous.
+3. **Board depletion** — animals now get eaten, wander off edges, and scatter.
+   Two Migration cards add 10 newcomers, but if Day 2 feels empty, add a third
+   Migration or make edge-exits re-enter on the opposite side.
+4. **Predator pressure** — predators hunt every round and eat at most once
+   each (then sleep). If the eating feels too punishing, use the Quiet Plains
+   variant (hunt every other round); if too tame, let gorged cats wake after
+   two rounds.
+5. **"The Moment Passes" feel** — scattering photographed animals is the v2
+   keystone. Verify it reads as dramatic (the herd disperses!) rather than
+   punitive, especially for new players' first photo.
+6. **Analysis paralysis at Golden Hour** — if final rounds drag, add a sand
    timer "the light is fading" gimmick (on-theme pressure).

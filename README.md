@@ -18,13 +18,15 @@ git clone <this repo> && open photo-safari/index.html
 ## The game in one breath
 
 You're a wildlife photographer with **8 exposures** and **10 rounds** of
-shifting light. Drive your jeep across a face-down savanna, flipping tiles to
-discover the animals hiding beneath. When the moment is right, frame a **3×3
-viewfinder** around your jeep and spend precious film. Herds score big,
-predators + prey score bigger, and everything scores more at **Golden Hour**
-(dawn & dusk). Meanwhile nature keeps moving: rain pulls herds to the
-waterholes, lions hunt, migrations thunder in — and if you drive too fast, you
-spook your own subjects. Complete your **secret magazine assignments** and the
+shifting light. Drive your jeep **one tile at a time** across a face-down
+savanna, flipping tiles to discover the animals hiding beneath — the full tile
+and animal manifest is public, so you always know what's still out there. When
+the moment is right, frame a **3×3 viewfinder** around your jeep and spend
+precious film. Herds score big, predators + prey score bigger, and everything
+scores more at **Golden Hour** (dawn & dusk). And the savanna never sits
+still: every round the herds drift, predators hunt (and eat!), animals wander
+off the board for good — and every animal you photograph scatters, because
+**the moment passes**. Complete your **secret magazine assignments** and the
 **Big Five** checklist. Best portfolio wins.
 
 ## Repo map
@@ -40,8 +42,9 @@ spook your own subjects. Complete your **secret magazine assignments** and the
 1. **Luck in the world, not in your hands** — no roll-and-move; you choose
    Careful (2) or Fast (4, but animals flee). The dice-feeling comes from
    what's under the tiles and how nature behaves.
-2. **Scarcity is the game** — 8 shots across 10 rounds; every photo is a
-   decision you'll defend at the score pile.
+2. **Scarcity is the game** — 8 shots across 10 rounds, and scenes are
+   perishable: photographed animals scatter, prey gets eaten, herds wander
+   off the board. Shoot the moment, not the plan.
 3. **One signature component** — the physical 3×3 viewfinder frame. Composition
    is literally geometry on the table.
 4. **The theme teaches the rules** — golden light scores more, fast jeeps scare

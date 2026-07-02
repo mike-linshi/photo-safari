@@ -90,10 +90,10 @@
   .cell.reach{cursor:pointer; box-shadow:inset 0 0 0 3px rgba(255,255,255,.85), inset 0 0 12px rgba(255,255,255,.5)}
   .cell.reach:hover{box-shadow:inset 0 0 0 3px #fff, inset 0 0 18px #fff}
   .cell.inframe{box-shadow:inset 0 0 0 3px var(--gold), inset 0 0 14px rgba(232,163,61,.55); z-index:1}
-  .cell .hunt{position:absolute; top:-2px; left:0px; font-size:14px; z-index:4}
+  .cell .zzz{position:absolute; top:-2px; left:1px; font-size:13px; z-index:4}
 
   #side{
-    width:330px; max-width:96vw; display:flex; flex-direction:column; gap:12px;
+    width:340px; max-width:96vw; display:flex; flex-direction:column; gap:12px;
   }
   .card{
     background:var(--panel); border:1px solid #d8c9a3; border-radius:10px;
@@ -127,6 +127,14 @@
   #big5 .b5row{display:flex; gap:10px; font-size:26px; justify-content:space-between; padding:0 6px}
   #big5 .b5row span{opacity:.25; filter:grayscale(1)}
   #big5 .b5row span.got{opacity:1; filter:none}
+
+  #guide table{width:100%; border-collapse:collapse; font-size:12.5px}
+  #guide td{padding:2.5px 3px; border-bottom:1px dotted #e5d9b8}
+  #guide td.n{text-align:right; white-space:nowrap}
+  #guide .tag{font-size:10px; padding:1px 5px; border-radius:8px; color:#fff}
+  #guide .tag.pred{background:#a5432b}
+  #guide .tag.prey{background:#6d8a4e}
+  #guide .mix{font-size:11.5px; opacity:.75; margin-top:6px; font-style:italic}
 
   #scores .prow{display:flex; align-items:center; gap:8px; font-size:14px; margin:5px 0}
   #scores .dot{width:12px;height:12px;border-radius:50%}
@@ -201,6 +209,7 @@
       <div class="btnrow">
         <button id="btn-careful">🐢 Careful Drive <small>(2)</small></button>
         <button id="btn-fast">💨 Fast Drive <small>(4, spooks)</small></button>
+        <button id="btn-stop">🛑 Stop Here</button>
         <button id="btn-photo" class="primary">📷 Take Photo</button>
         <button id="btn-end">End Turn ➤</button>
       </div>
@@ -220,6 +229,11 @@
       <div class="b5row" id="b5row"></div>
     </div>
 
+    <div class="card">
+      <h3>Field Guide</h3>
+      <div id="guide"></div>
+    </div>
+
     <div class="card" id="scores">
       <h3>Expedition Standings</h3>
       <div id="scorelist"></div>
@@ -234,12 +248,12 @@
       <details class="help">
         <summary>How to play (30 seconds)</summary>
         <ul>
-          <li><b>Your turn:</b> drive once (Careful = 2 tiles, Fast = 4 tiles but nearby animals flee), and optionally take <b>one photo</b>.</li>
-          <li><b>Driving reveals</b> face-down land around your jeep. Animals hide under tiles.</li>
-          <li><b>A photo</b> captures the 3×3 window around your jeep. You score every animal in frame, plus bonuses: herds (3+ of a kind +4), action shots (predator + prey +5), waterhole scenes (+2), and <b>Golden Hour</b> (+4 at Dawn/Dusk).</li>
-          <li>You have <b>8 exposures</b> for the whole game (10 rounds over 2 days).</li>
-          <li>Complete your two <b>secret assignments</b> and the <b>Big Five</b> (🦁🐘🦏🐆🐃) for big bonuses.</li>
-          <li>At day's end, <b>nature moves</b>: rain pulls herds to water, predators hunt, migrations arrive.</li>
+          <li><b>Your turn:</b> drive once — Careful (2 steps) or Fast (4 steps, but animals next to where you stop flee) — and take <b>one photo</b> (before, during, or after driving).</li>
+          <li><b>Drive one tile at a time</b>, flipping face-down land around your jeep. Driving <i>through</i> an animal's tile scatters it.</li>
+          <li><b>A photo</b> captures the 3×3 window around your jeep: each animal scores its value, plus <b>herds</b> (3+ of a kind +4), <b>action shots</b> (predator + prey +5), <b>water scenes</b> (2+ animals with water +2), and <b>Golden Hour</b> (+4 at Dawn/Dusk).</li>
+          <li>You have <b>8 exposures</b> for the whole game (10 rounds over 2 days). The Field Guide shows every animal in the wild — the full manifest is public.</li>
+          <li><b>Nature moves every round:</b> the event card steers the herds, predators stalk and eat prey, animals you photographed scatter (<i>the moment passes</i>), and animals can flee off the board for good.</li>
+          <li>Complete your two <b>secret assignments</b> and the <b>Big Five</b> (🦁🐆🐘🦏🐃) for big bonuses.</li>
         </ul>
       </details>
     </div>
@@ -251,8 +265,10 @@
 <script>
 "use strict";
 /* ============================================================
-   GOLDEN HOUR — digital prototype
+   GOLDEN HOUR — digital prototype v2
    A press-your-luck photo safari for 2–4 players (hot-seat).
+   v2 (post-playtest): known tile/animal distribution, step-by-step
+   driving, pass-through scattering, living animal phase each round.
    ============================================================ */
 
 const N = 9;
@@ -261,21 +277,20 @@ const ROUNDS = 10;
 const TIMES = ["🌅 Dawn","☀️ Morning","🌞 Midday","🌤 Afternoon","🌇 Dusk"];
 const GOLDEN = [0,4]; // dawn & dusk indices
 
+/* The public manifest — like the tile mix, this is known to all players. */
+const TILE_BAG = {grass:42, bush:12, marsh:8, water:8, rock:7}; // = 77 (+4 corner camps)
 const SPECIES = {
-  impala:     {name:"Impala",     emoji:"🦌", v:1, prey:true,  habitats:["grass","bush"],  count:5},
-  wildebeest: {name:"Wildebeest", emoji:"🐂", v:1, prey:true,  habitats:["grass","marsh"], count:5},
-  zebra:      {name:"Zebra",      emoji:"🦓", v:2, prey:true,  habitats:["grass"],         count:5},
-  flamingo:   {name:"Flamingo",   emoji:"🦩", v:2, prey:true,  habitats:["water","marsh"], count:3, aquatic:true},
-  giraffe:    {name:"Giraffe",    emoji:"🦒", v:3,             habitats:["bush","grass"],  count:3},
-  buffalo:    {name:"Buffalo",    emoji:"🐃", v:3, big5:true,  habitats:["grass","marsh"], count:3},
-  hippo:      {name:"Hippo",      emoji:"🦛", v:4,             habitats:["water","marsh"], count:2, aquatic:true},
-  croc:       {name:"Crocodile",  emoji:"🐊", v:4, pred:true,  habitats:["water","marsh"], count:2, aquatic:true},
-  elephant:   {name:"Elephant",   emoji:"🐘", v:5, big5:true,  habitats:["grass","bush","marsh"], count:3},
-  lion:       {name:"Lion",       emoji:"🦁", v:5, big5:true, pred:true, habitats:["grass","rock"], count:2},
-  leopard:    {name:"Leopard",    emoji:"🐆", v:7, big5:true, pred:true, habitats:["bush","rock"],  count:2},
-  rhino:      {name:"Rhino",      emoji:"🦏", v:8, big5:true,  habitats:["grass","bush"],  count:2},
+  impala:   {name:"Impala",   emoji:"🦌", v:1, prey:true, habitats:["grass"],          count:6},
+  zebra:    {name:"Zebra",    emoji:"🦓", v:2, prey:true, habitats:["grass"],          count:5},
+  flamingo: {name:"Flamingo", emoji:"🦩", v:2, prey:true, habitats:["water","marsh"],  count:3, aquatic:true},
+  buffalo:  {name:"Buffalo",  emoji:"🐃", v:3, prey:true, big5:true, habitats:["grass","marsh"], count:3},
+  hippo:    {name:"Hippo",    emoji:"🦛", v:4, prey:true, habitats:["water","marsh"],  count:2, aquatic:true},
+  elephant: {name:"Elephant", emoji:"🐘", v:5, prey:true, big5:true, habitats:["bush","grass"], count:3},
+  rhino:    {name:"Rhino",    emoji:"🦏", v:7, prey:true, big5:true, habitats:["bush","grass"], count:2},
+  lion:     {name:"Lion",     emoji:"🦁", v:5, pred:true, big5:true, habitats:["grass","rock"], count:2},
+  leopard:  {name:"Leopard",  emoji:"🐆", v:7, pred:true, big5:true, habitats:["bush","rock"],  count:2},
 };
-const BIG5 = ["lion","elephant","rhino","leopard","buffalo"];
+const BIG5 = ["lion","leopard","elephant","rhino","buffalo"];
 const TERR_ICON = {grass:"", bush:"🌳", marsh:"🌿", water:"💧", rock:"🪨", camp:"⛺"};
 const PLAYER_COLORS = ["var(--p1)","var(--p2)","var(--p3)","var(--p4)"];
 const DEFAULT_NAMES = ["Amber","Teal","Violet","Moss"];
@@ -285,55 +300,58 @@ const ASSIGNMENTS = [
    check:f=>f.species.has("lion")},
   {id:"shadow",  name:"Spots in the Shadows", desc:"A photo containing a Leopard.", pts:7,
    check:f=>f.species.has("leopard")},
-  {id:"giants",  name:"Walking with Giants",  desc:"An Elephant AND a Giraffe in one photo.", pts:8,
-   check:f=>f.species.has("elephant")&&f.species.has("giraffe")},
-  {id:"herd",    name:"The Great Herd",       desc:"5 or more animals in one photo.", pts:8,
-   check:f=>f.animals.length>=5},
-  {id:"gather",  name:"Waterhole Gathering",  desc:"3+ animals with water in frame.", pts:7,
-   check:f=>f.animals.length>=3&&f.hasWater},
-  {id:"pink",    name:"Pink Light",           desc:"A Flamingo photographed at Dawn or Dusk.", pts:6,
-   check:(f,ctx)=>f.species.has("flamingo")&&ctx.golden},
   {id:"armor",   name:"The Armored Giant",    desc:"A photo containing a Rhino.", pts:7,
    check:f=>f.species.has("rhino")},
   {id:"river",   name:"River Horse",          desc:"A photo containing a Hippo.", pts:6,
    check:f=>f.species.has("hippo")},
-  {id:"standoff",name:"The Standoff",         desc:"A Buffalo and any predator in one photo.", pts:8,
-   check:f=>f.species.has("buffalo")&&f.hasPred},
+  {id:"pink",    name:"Pink Light",           desc:"A Flamingo photographed at Dawn or Dusk.", pts:6,
+   check:(f,ctx)=>f.species.has("flamingo")&&ctx.golden},
   {id:"stripes", name:"Dazzle of Stripes",    desc:"3+ Zebras in one photo.", pts:7,
    check:f=>(f.counts.zebra||0)>=3},
+  {id:"herd",    name:"The Great Herd",       desc:"5 or more animals in one photo.", pts:8,
+   check:f=>f.animals.length>=5},
+  {id:"gather",  name:"Waterhole Gathering",  desc:"3+ animals with water in frame.", pts:7,
+   check:f=>f.animals.length>=3&&f.hasWater},
   {id:"golden3", name:"Golden Silhouettes",   desc:"3+ animals photographed at Dawn or Dusk.", pts:7,
    check:(f,ctx)=>f.animals.length>=3&&ctx.golden},
   {id:"twotusk", name:"Family of Tusks",      desc:"2+ Elephants in one photo.", pts:8,
    check:f=>(f.counts.elephant||0)>=2},
+  {id:"standoff",name:"The Standoff",         desc:"A Buffalo and any predator in one photo.", pts:8,
+   check:f=>f.species.has("buffalo")&&f.hasPred},
+  {id:"giants",  name:"Giants of the Plain",  desc:"An Elephant AND a Rhino in one photo.", pts:9,
+   check:f=>f.species.has("elephant")&&f.species.has("rhino")},
 ];
 
+/* Nature deck v2: each card steers the PREY every round.
+   Predators hunt every round as a fixed rule. */
 const EVENTS = [
   {id:"rain", name:"🌧 Rain Sweeps In", times:2,
-   desc:"Thirsty herds head for water.",
-   apply(){ animals.forEach(a=>stepToward(a, nearestWater(a.r,a.c), 1)); },
-   mod:{}},
+   desc:"Thirsty herds head for water — every prey animal moves 1 tile toward the nearest waterhole.",
+   apply(){ eachPrey(a=>stepToward(a, nearestWater(a.r,a.c), 1)); }},
   {id:"migration", name:"🐂 The Migration", times:2,
-   desc:"A great herd thunders in from the horizon!",
-   apply(){ migrate(); }, mod:{}},
-  {id:"hunt", name:"🦁 The Hunt", times:2,
-   desc:"Predators stalk their prey. Photos of a hunting predator score +5 next round.",
-   apply(){ huntPhase(); }, mod:{}},
-  {id:"light", name:"✨ Perfect Light", times:2,
-   desc:"Crystal air! All photos next round +3.",
-   apply(){}, mod:{photoDelta:3}},
-  {id:"dust", name:"🌪 Dust Storm", times:2,
-   desc:"Haze everywhere. Next round: photos −3 and no Fast driving.",
-   apply(){}, mod:{photoDelta:-3, noFast:true}},
+   desc:"A new herd thunders in from the horizon, and the plains stir.",
+   apply(){ migrate(); eachPrey(a=>randomMove(a)); }},
+  {id:"restless", name:"🍃 Restless Herds", times:2,
+   desc:"Something's in the wind — every prey animal wanders. Some may leave the plains entirely.",
+   apply(){ eachPrey(a=>randomMove(a)); }},
+  {id:"still", name:"😴 Still Air", times:2,
+   desc:"The savanna dozes. The herds hold their ground.",
+   apply(){}},
   {id:"watering", name:"🦛 The Watering Call", times:2,
    desc:"Animals near water gather to drink.",
-   apply(){ animals.forEach(a=>{ const w=nearestWater(a.r,a.c);
-     if(w && dist(a.r,a.c,w.r,w.c)<=3) stepToward(a,w,1); }); }, mod:{}},
+   apply(){ eachPrey(a=>{ const w=nearestWater(a.r,a.c);
+     if(w && dist(a.r,a.c,w.r,w.c)<=3) stepToward(a,w,1); }); }},
+  {id:"skittish", name:"🚙 Skittish Plains", times:2,
+   desc:"The herds have noticed the jeeps — every prey animal shies away from the nearest one.",
+   apply(){ eachPrey(a=>{ const j=nearestJeep(a.r,a.c);
+     if(j) flee(a,j.r,j.c); }); }},
 ];
 
 /* ---------- state ---------- */
 let grid=[], animals=[], players=[], deck=[];
-let cur=0, round=1, roundMod={}, phase="setup", animId=0;
-let turnFlags={moved:false, shot:false};
+let cur=0, round=1, phase="setup", animId=0;
+let driving=null; // {stepsLeft, fast, moved}
+let turnFlags={droveDone:false, shot:false};
 
 const $=id=>document.getElementById(id);
 const rnd=n=>Math.floor(Math.random()*n);
@@ -346,8 +364,14 @@ const day=()=>round<=5?1:2;
 
 function animalAt(r,c){ return animals.find(a=>a.r===r&&a.c===c); }
 function carAt(r,c){ return players.find(p=>p.r===r&&p.c===c); }
+function eachPrey(fn){ animals.slice().forEach(a=>{ if(SPECIES[a.sp].prey && animals.includes(a)) fn(a); }); }
+function nearestJeep(r,c){
+  let best=null, bd=1e9;
+  players.forEach(p=>{ const d=dist(r,c,p.r,p.c); if(d<bd){bd=d;best=p;} });
+  return best;
+}
 
-/* ---------- board generation ---------- */
+/* ---------- board generation (fixed public bag) ---------- */
 function genBoard(){
   grid=[]; animals=[];
   for(let r=0;r<N;r++){ grid.push([]);
@@ -356,56 +380,26 @@ function genBoard(){
   const camps=[[0,0],[0,N-1],[N-1,0],[N-1,N-1]];
   camps.forEach(([r,c])=>{grid[r][c].terrain="camp";});
 
-  // 3 waterhole clusters, spread out and away from camps
-  const waters=[];
-  let guard=0;
-  while(waters.length<3 && guard++<500){
-    const r=2+rnd(N-4), c=2+rnd(N-4);
-    if(camps.some(([cr,cc])=>dist(r,c,cr,cc)<3)) continue;
-    if(waters.some(w=>dist(r,c,w[0],w[1])<3)) continue;
-    waters.push([r,c]);
+  // shuffle the fixed tile bag onto every non-camp cell
+  const bag=[];
+  for(const [t,n] of Object.entries(TILE_BAG)) for(let i=0;i<n;i++) bag.push(t);
+  shuffle(bag);
+  let bi=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(grid[r][c].terrain==="camp") continue;
+    grid[r][c].terrain=bag[bi++];
   }
-  waters.forEach(([r,c])=>{
-    grid[r][c].terrain="water";
-    const dirs=shuffle([[0,1],[0,-1],[1,0],[-1,0]]);
-    const [dr,dc]=dirs[0];
-    if(inB(r+dr,c+dc)&&grid[r+dr][c+dc].terrain==="grass") grid[r+dr][c+dc].terrain="water";
-    dirs.slice(1).forEach(([mr,mc])=>{
-      if(inB(r+mr,c+mc)&&grid[r+mr][c+mc].terrain==="grass"&&Math.random()<.55)
-        grid[r+mr][c+mc].terrain="marsh";
-    });
-  });
-  // rocky kopjes
-  let rocks=0; guard=0;
-  while(rocks<4 && guard++<300){
-    const r=1+rnd(N-2), c=1+rnd(N-2);
-    if(grid[r][c].terrain!=="grass") continue;
-    if(camps.some(([cr,cc])=>dist(r,c,cr,cc)<2)) continue;
-    grid[r][c].terrain="rock"; rocks++;
-  }
-  // acacia bush patches
-  for(let p=0;p<5;p++){
-    let r=rnd(N), c=rnd(N), size=2+rnd(3), tries=0;
-    while(tries++<40 && size>0){
-      if(inB(r,c)&&grid[r][c].terrain==="grass"&&!camps.some(([cr,cc])=>dist(r,c,cr,cc)<2)){
-        grid[r][c].terrain="bush"; size--;
-      }
-      r+=rnd(3)-1; c+=rnd(3)-1;
-      if(!inB(r,c)){r=rnd(N);c=rnd(N);}
-    }
-  }
-  // seed hidden animals
+  // print the fixed animal manifest onto matching tiles
   for(const [key,sp] of Object.entries(SPECIES)){
-    let placed=0; guard=0;
-    while(placed<sp.count && guard++<800){
+    let placed=0, guard=0;
+    while(placed<sp.count && guard++<2000){
       const r=rnd(N), c=rnd(N), t=grid[r][c];
       if(t.terrain==="camp"||t.hidden) continue;
       if(!sp.habitats.includes(t.terrain)) continue;
-      if(camps.some(([cr,cc])=>dist(r,c,cr,cc)<2)) continue;
       t.hidden=key; placed++;
     }
   }
-  // reveal around camps
+  // reveal around camps (silent — animals here start visible)
   camps.forEach(([r,c])=>revealAround(r,c,false));
 }
 
@@ -422,7 +416,7 @@ function revealTile(r,c,announce){
   t.revealed=true;
   if(t.hidden){
     const sp=SPECIES[t.hidden];
-    animals.push({id:animId++, sp:t.hidden, r, c, hunting:false});
+    animals.push({id:animId++, sp:t.hidden, r, c, restless:false, gorged:false});
     if(announce) log(`👀 ${curP().name} spots a <b>${sp.name} ${sp.emoji}</b>!`, sp.v>=5);
     t.hidden=null;
   }
@@ -438,11 +432,12 @@ function validAnimalTile(a,r,c){
   if(animalAt(r,c)||carAt(r,c)) return false;
   return true;
 }
+function removeAnimal(a){ animals=animals.filter(x=>x!==a); }
 function nearestWater(r,c){
   let best=null, bd=1e9;
   for(let rr=0;rr<N;rr++)for(let cc=0;cc<N;cc++){
     const t=grid[rr][cc];
-    if(t.revealed&&(t.terrain==="water")){
+    if(t.revealed&&t.terrain==="water"){
       const d=dist(r,c,rr,cc);
       if(d<bd){bd=d;best={r:rr,c:cc};}
     }
@@ -460,33 +455,61 @@ function stepToward(a,target,steps){
     a.r+=dr; a.c+=dc;
   }
 }
-function flee(a,fr,fc){
+/* One honest random step. If the roll points off the board, the animal
+   leaves the game for good. */
+function randomMove(a){
+  const dirs=[[0,1],[0,-1],[1,0],[-1,0]];
+  const [dr,dc]=dirs[rnd(4)];
+  const r=a.r+dr, c=a.c+dc;
+  if(!inB(r,c)){
+    removeAnimal(a);
+    log(`🌾 A ${SPECIES[a.sp].name} ${SPECIES[a.sp].emoji} slips away off the plains.`);
+    return;
+  }
+  if(validAnimalTile(a,r,c)){ a.r=r; a.c=c; }
+}
+/* Flee directly away from (fr,fc). May exit the board entirely.
+   dryRun=true just reports whether fleeing is possible. */
+function flee(a,fr,fc,dryRun=false){
   const dr=Math.sign(a.r-fr), dc=Math.sign(a.c-fc);
-  const cands=shuffle([[dr,dc],[dr,0],[0,dc]]).filter(([mr,mc])=>(mr||mc));
+  const cands=[[dr,dc],[dr,0],[0,dc]].filter(([mr,mc])=>mr||mc);
   for(const [mr,mc] of cands){
-    if(validAnimalTile(a,a.r+mr,a.c+mc)){ a.r+=mr; a.c+=mc; return true; }
+    const r=a.r+mr, c=a.c+mc;
+    if(!inB(r,c)){
+      if(dryRun) return true;
+      removeAnimal(a);
+      log(`💨 The ${SPECIES[a.sp].name} ${SPECIES[a.sp].emoji} bolts clean off the plains!`);
+      return true;
+    }
+    if(validAnimalTile(a,r,c)){
+      if(dryRun) return true;
+      a.r=r; a.c=c; return true;
+    }
   }
   return false;
 }
+/* Predators hunt every round: up to 2 steps toward the nearest prey
+   within 4 tiles; reach it and they eat. A fed cat is done for the game. */
 function huntPhase(){
-  animals.filter(a=>SPECIES[a.sp].pred).forEach(p=>{
+  animals.filter(a=>SPECIES[a.sp].pred&&!a.gorged).forEach(p=>{
     let best=null, bd=1e9;
     animals.filter(a=>SPECIES[a.sp].prey).forEach(q=>{
       const d=dist(p.r,p.c,q.r,q.c);
       if(d<bd){bd=d;best=q;}
     });
-    if(best&&bd<=5){
+    if(best&&bd<=4){
       stepToward(p,best,2);
       if(dist(p.r,p.c,best.r,best.c)<=1){
-        p.hunting=true;
-        log(`🩸 The ${SPECIES[p.sp].name} closes in on a ${SPECIES[best.sp].name}! Photos of it next round: +5.`, true);
+        removeAnimal(best);
+        p.gorged=true;
+        log(`🩸 The ${SPECIES[p.sp].name} ${SPECIES[p.sp].emoji} brings down a ${SPECIES[best.sp].name}! It's done hunting — a gorged cat 💤 makes a fine portrait.`, true);
       }
     }
   });
 }
 function migrate(){
   const edge=rnd(4); // 0 top,1 bottom,2 left,3 right
-  const herd=["wildebeest","wildebeest","wildebeest","zebra","zebra","wildebeest"];
+  const herd=["impala","impala","zebra","impala","zebra"];
   let placed=0;
   const cells=shuffle([...Array(N).keys()]);
   for(const i of cells){
@@ -495,102 +518,62 @@ function migrate(){
     const c=edge===2?0:edge===3?N-1:i;
     const t=grid[r][c];
     if(t.terrain==="camp"||t.terrain==="water"||t.terrain==="rock") continue;
-    if(!t.revealed){ t.revealed=true; if(t.hidden){ animals.push({id:animId++,sp:t.hidden,r,c,hunting:false}); t.hidden=null; } }
+    if(!t.revealed){ t.revealed=true; if(t.hidden){ animals.push({id:animId++,sp:t.hidden,r,c,restless:false,gorged:false}); t.hidden=null; } }
     if(animalAt(r,c)||carAt(r,c)) continue;
-    animals.push({id:animId++, sp:herd[placed], r, c, hunting:false});
+    animals.push({id:animId++, sp:herd[placed], r, c, restless:false, gorged:false});
     placed++;
   }
-  log(`🐂 ${placed} animals thunder onto the ${["northern","southern","western","eastern"][edge]} plains!`, true);
+  log(`🐂 ${placed} newcomers thunder onto the ${["northern","southern","western","eastern"][edge]} plains!`, true);
 }
-function wanderPhase(){
-  animals.forEach(a=>{
-    if(Math.random()<0.35){
-      const dirs=shuffle([[0,1],[0,-1],[1,0],[-1,0]]);
-      for(const [dr,dc] of dirs){
-        if(validAnimalTile(a,a.r+dr,a.c+dc)){ a.r+=dr; a.c+=dc; break; }
-      }
-    }
+/* "The moment passes": every animal caught in a photo this round scatters. */
+function momentPasses(){
+  const restless=animals.filter(a=>a.restless);
+  restless.forEach(a=>{
+    if(!animals.includes(a)) return;
+    randomMove(a);
+    if(animals.includes(a)) randomMove(a);
+    a.restless=false;
   });
+  if(restless.length) log(`🍃 The photographed animals scatter — the moment has passed.`);
 }
 
-/* ---------- movement ---------- */
-function enterCost(r,c){
-  const t=grid[r][c];
-  if(!t.revealed) return 1;          // optimistic — you find out when you get there
-  if(t.terrain==="water"||t.terrain==="rock") return Infinity;
-  if(animalAt(r,c)) return Infinity; // you never drive over wildlife
-  if(carAt(r,c)) return Infinity;
-  return t.terrain==="marsh"?2:1;
+/* ---------- movement (step by step) ---------- */
+function stepCost(r,c){ return grid[r][c].terrain==="marsh"?2:1; }
+function canStepTo(p,r,c,stepsLeft){
+  if(!inB(r,c)) return false;
+  const t=grid[r][c]; // always revealed: it's adjacent to the jeep
+  if(t.terrain==="water"||t.terrain==="rock") return false;
+  if(carAt(r,c)) return false;
+  if(stepCost(r,c)>stepsLeft) return false;
+  const a=animalAt(r,c);
+  if(a && !flee(a,p.r,p.c,true)) return false; // it would stand its ground
+  return true;
 }
-function reachable(p,budget){
-  const key=(r,c)=>r*N+c;
-  const distm=new Map([[key(p.r,p.c),0]]);
-  const parent=new Map();
-  const pq=[[0,p.r,p.c]];
-  while(pq.length){
-    pq.sort((a,b)=>a[0]-b[0]);
-    const [d,r,c]=pq.shift();
-    if(d>distm.get(key(r,c))) continue;
-    for(const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0]]){
-      const rr=r+dr, cc=c+dc;
-      if(!inB(rr,cc)) continue;
-      const cost=enterCost(rr,cc);
-      if(cost===Infinity) continue;
-      const nd=d+cost;
-      if(nd>budget) continue;
-      if(nd<(distm.get(key(rr,cc))??1e9)){
-        distm.set(key(rr,cc),nd); parent.set(key(rr,cc),[r,c]);
-        pq.push([nd,rr,cc]);
-      }
-    }
-  }
-  return {distm,parent,key};
-}
-let moveCtx=null; // {budget, fast, reach}
-
-function beginMove(fast){
-  if(turnFlags.moved){ hint("You've already driven this turn."); return; }
-  if(fast&&roundMod.noFast){ hint("The dust storm makes fast driving impossible this round."); return; }
-  const budget=fast?4:2;
-  const reach=reachable(curP(),budget);
-  moveCtx={budget,fast,reach};
+function beginDrive(fast){
+  if(turnFlags.droveDone){ hint("You've already driven this turn."); return; }
+  driving={stepsLeft:fast?4:2, fast, moved:false};
   render();
-  hint(fast?"Click a highlighted tile. Fast driving spooks animals next to where you stop!"
-           :"Click a highlighted tile to drive there quietly.");
+  hint(fast?"Click an adjacent tile to drive — one at a time. Fast driving spooks animals where you stop!"
+           :"Click an adjacent tile to drive there quietly, one tile at a time.");
 }
-async function executeMove(tr,tc){
-  const p=curP(), {reach,fast,budget}=moveCtx;
-  moveCtx=null;
-  // reconstruct planned path
-  const path=[]; let cursor=[tr,tc];
-  while(cursor && !(cursor[0]===p.r&&cursor[1]===p.c)){
-    path.unshift(cursor);
-    cursor=reach.parent.get(reach.key(cursor[0],cursor[1]));
+function stepTo(r,c){
+  const p=curP();
+  const a=animalAt(r,c);
+  if(a){
+    flee(a,p.r,p.c);
+    if(animals.includes(a)) log(`💨 ${p.name} pushes through — the ${SPECIES[a.sp].name} scatters!`);
   }
-  turnFlags.moved=true;
-  let spent=0;
-  phase="animating"; render();
-  for(const [rr,cc] of path){
-    const t=grid[rr][cc];
-    // reveal what's ahead before entering
-    revealTile(rr,cc,true);
-    const cost=(t.terrain==="marsh")?2:1;
-    if(t.terrain==="water"||t.terrain==="rock"){
-      log(`🛑 ${p.name} brakes hard — ${t.terrain==="water"?"open water":"a rocky kopje"} blocks the track!`);
-      break;
-    }
-    if(animalAt(rr,cc)){
-      log(`🛑 ${p.name} stops — wildlife on the track!`);
-      break;
-    }
-    if(spent+cost>budget) break;
-    spent+=cost;
-    p.r=rr; p.c=cc;
-    revealAround(rr,cc,true);
-    render();
-    await sleep(160);
-  }
-  if(fast){
+  driving.stepsLeft-=stepCost(r,c);
+  driving.moved=true;
+  p.r=r; p.c=c;
+  revealAround(r,c,true);
+  if(driving.stepsLeft<=0){ finishDrive(); }
+  else hint(`${driving.stepsLeft} step${driving.stepsLeft>1?"s":""} left — keep driving, stop here, or take your photo.`);
+  render();
+}
+function finishDrive(){
+  const p=curP();
+  if(driving && driving.fast && driving.moved){
     let spooked=0;
     animals.slice().forEach(a=>{
       if(dist(a.r,a.c,p.r,p.c)<=1){
@@ -600,8 +583,10 @@ async function executeMove(tr,tc){
     });
     if(spooked) log(`💨 ${p.name}'s engine roars — ${spooked} animal${spooked>1?"s":""} scatter${spooked>1?"":"s"}!`);
   }
-  phase="turn"; render();
+  driving=null;
+  turnFlags.droveDone=true;
   hint(turnFlags.shot?"Drive done. End your turn when ready.":"In position? Take your photo — or save the film.");
+  render();
 }
 
 /* ---------- photos ---------- */
@@ -633,17 +618,10 @@ function scorePhoto(f){
     const s=SPECIES[sp];
     lines.push([`${s.emoji} ${s.name} ×${n}`, s.v*n]); total+=s.v*n;
     if(n>=3){ lines.push([`&nbsp;&nbsp;↳ Herd of ${s.name}s`, 4]); total+=4; }
-    else if(n===2){ lines.push([`&nbsp;&nbsp;↳ Pair`, 1]); total+=1; }
   }
   if(f.hasPred&&f.hasPrey){ lines.push(["⚡ Action shot (predator + prey)",5]); total+=5; }
   if(f.hasWater&&f.animals.length>=2){ lines.push(["💧 Waterhole scene",2]); total+=2; }
-  if(f.animals.some(a=>a.hunting)){ lines.push(["🩸 The hunt, captured!",5]); total+=5; }
   if(isGolden()){ lines.push(["🌇 Golden Hour light",4]); total+=4; }
-  if(roundMod.photoDelta){
-    lines.push([roundMod.photoDelta>0?"✨ Perfect light":"🌪 Dust haze", roundMod.photoDelta]);
-    total+=roundMod.photoDelta;
-  }
-  if(total<0) total=0;
   return {lines,total};
 }
 function tryPhoto(){
@@ -654,7 +632,7 @@ function tryPhoto(){
   const mini=f.cells.map(cell=>{
     if(!cell) return `<div style="background:#666"></div>`;
     const t=cell.t;
-    const bg=t.revealed?getComputedStyle(document.documentElement).getPropertyValue(`--${t.terrain==="camp"?"camp":t.terrain}`):"#bfa876";
+    const bg=t.revealed?`var(--${t.terrain})`:"#bfa876";
     const a=animalAt(cell.r,cell.c);
     const car=carAt(cell.r,cell.c);
     const glyph=(a&&t.revealed)?SPECIES[a.sp].emoji:(car?"🚙":"");
@@ -667,7 +645,8 @@ function tryPhoto(){
     <div class="framepreview">${mini}</div>
     <div class="breakdown">${body}</div>
     <div class="total"><span>Photo value</span><span>${sc.total}</span></div>
-    <p style="font-size:13px;opacity:.7">🎞️ ${p.film} exposure${p.film>1?"s":""} left on your roll.</p>
+    <p style="font-size:13px;opacity:.7">🎞️ ${p.film} exposure${p.film>1?"s":""} left on your roll.
+    Photographed animals will scatter at day's end — the moment passes.</p>
     <div class="modalbtns">
       <button id="m-cancel">Lower camera</button>
       <button id="m-snap" class="primary">SNAP! 📸</button>
@@ -680,13 +659,14 @@ function commitPhoto(f,sc){
   p.film--; turnFlags.shot=true;
   p.score+=sc.total;
   const snapshot=f.cells.map(cell=>{
-    if(!cell) return {bg:"#666",g:""};
+    if(!cell) return {terr:null,g:""};
     const t=cell.t;
     const a=animalAt(cell.r,cell.c), car=carAt(cell.r,cell.c);
     return {terr:t.revealed?t.terrain:"facedown", g:(a&&t.revealed)?SPECIES[a.sp].emoji:(car?"🚙":"")};
   });
   p.photos.push({round, time:TIMES[timeIdx()], total:sc.total, snapshot});
   log(`📸 <b>${p.name}</b> takes a photo worth <b>${sc.total}</b> points!`, sc.total>=15);
+  f.animals.forEach(a=>a.restless=true); // the moment passes
   // big five progress
   f.species.forEach(sp=>{ if(BIG5.includes(sp)) p.big5.add(sp); });
   if(!p.big5done && BIG5.every(sp=>p.big5.has(sp))){
@@ -703,9 +683,9 @@ function commitPhoto(f,sc){
   render();
 }
 
-/* ---------- rounds & events ---------- */
+/* ---------- rounds & the nature phase ---------- */
 function endTurn(){
-  moveCtx=null;
+  if(driving) finishDrive();
   if(cur<players.length-1){
     cur++;
     startTurnInterstitial();
@@ -714,21 +694,22 @@ function endTurn(){
   }
 }
 function endRound(){
-  animals.forEach(a=>a.hunting=false);
   if(round>=ROUNDS){ gameOver(); return; }
-  // nature phase
+  // NATURE PHASE — every round the savanna moves
   if(!deck.length){
     deck=[]; EVENTS.forEach(e=>{for(let i=0;i<e.times;i++)deck.push(e);}); shuffle(deck);
   }
   const ev=deck.pop();
-  ev.apply();
-  wanderPhase();
-  roundMod=ev.mod||{};
+  ev.apply();      // 1. the event steers the prey
+  huntPhase();     // 2. predators always hunt
+  momentPasses();  // 3. photographed animals scatter
   round++; cur=0;
   log(`— ${TIMES[timeIdx()]} , Day ${day()} —`);
   showModal(`
     <h2>${ev.name}</h2>
     <p style="font-size:16px">${ev.desc}</p>
+    <p style="font-size:13.5px;opacity:.8">…and as always: predators stalk (and sometimes catch) the nearest prey,
+    and photographed animals scatter.</p>
     <p style="opacity:.75">The savanna shifts… now it's <b>${TIMES[timeIdx()]}</b> on Day ${day()}.
     ${isGolden()?"<br>🌇 <b>Golden Hour!</b> All photos +4 this round.":""}</p>
     <div class="modalbtns"><button id="m-ok" class="primary">Continue</button></div>`);
@@ -736,7 +717,8 @@ function endRound(){
   render();
 }
 function startTurnInterstitial(){
-  turnFlags={moved:false, shot:false};
+  turnFlags={droveDone:false, shot:false};
+  driving=null;
   const p=curP();
   showModal(`
     <h2><span style="color:${p.color}">■</span> ${p.name}, you're up</h2>
@@ -761,7 +743,7 @@ function gameOver(){
     <div class="gallery">${p.photos.map(ph=>`
       <div class="shot">
         <div class="mini">${ph.snapshot.map(s=>{
-          const bg=s.terr?`var(--${s.terr==="camp"?"camp":s.terr==="facedown"?"facedown":s.terr})`:s.bg;
+          const bg=s.terr?`var(--${s.terr})`:"#666";
           return `<div style="background:${bg}">${s.g}</div>`;}).join("")}</div>
         <div class="cap">${ph.time} · <b>${ph.total} pts</b></div>
       </div>`).join("")||"<em>No photos taken.</em>"}
@@ -786,7 +768,6 @@ function log(msg,big=false){
   while($("log").children.length>40) $("log").lastChild.remove();
 }
 function hint(t){ $("hint").textContent=t; }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 function showModal(html,wide=false){
   $("modal").innerHTML=html;
   $("modal").style.maxWidth=wide?"760px":"560px";
@@ -805,16 +786,12 @@ function render(){
     if(i+1<round) cls.push("past");
     return `<span class="${cls.join(" ")}">${i%5===0?`D${i<5?1:2} `:""}${t}</span>`;
   }).join("");
-  $("eventbanner").textContent=
-    roundMod.photoDelta>0?"✨ Perfect light — photos +3 this round":
-    roundMod.photoDelta<0?"🌪 Dust storm — photos −3, no fast driving":
-    isGolden()?"🌇 Golden Hour — photos +4 this round":"";
+  $("eventbanner").textContent=isGolden()?"🌇 Golden Hour — photos +4 this round":"";
 
   // board
   const b=$("board");
   b.style.gridTemplateColumns=`repeat(${N},auto)`;
   const p=curP();
-  const frame=p&&phase==="turn"?null:null;
   let html="";
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
     const t=grid[r][c];
@@ -825,15 +802,13 @@ function render(){
       cls.push(`t-${t.terrain}`); if(t.terrain==="grass"&&t.alt) cls.push("alt");
       if(TERR_ICON[t.terrain]) inner+=`<span class="terr">${TERR_ICON[t.terrain]}</span>`;
       const a=animalAt(r,c);
-      if(a) inner+=`<span class="animal">${SPECIES[a.sp].emoji}</span>${a.hunting?'<span class="hunt">🩸</span>':""}`;
+      if(a) inner+=`<span class="animal">${SPECIES[a.sp].emoji}</span>${a.gorged?'<span class="zzz">💤</span>':""}`;
     }
     const car=carAt(r,c);
     if(car) inner+=`<span class="car"><span class="ring" style="border-color:${car.color}"></span>🚙</span>`;
-    if(moveCtx){
-      const k=moveCtx.reach.key(r,c);
-      if(moveCtx.reach.distm.has(k)&&!(r===p.r&&c===p.c)) cls.push("reach");
-    }
-    if(phase==="turn"&&!moveCtx&&p&&dist(r,c,p.r,p.c)<=1&&!turnFlags.shot&&p.film>0) cls.push("inframe");
+    if(driving&&p&&phase==="turn"&&Math.abs(r-p.r)+Math.abs(c-p.c)===1&&canStepTo(p,r,c,driving.stepsLeft))
+      cls.push("reach");
+    if(phase==="turn"&&!driving&&p&&dist(r,c,p.r,p.c)<=1&&!turnFlags.shot&&p.film>0) cls.push("inframe");
     html+=`<div class="${cls.join(" ")}" data-r="${r}" data-c="${c}">${inner}</div>`;
   }
   b.innerHTML=html;
@@ -843,8 +818,9 @@ function render(){
     $("tc-name").innerHTML=`<span style="color:${p.color}">■</span> ${p.name}`;
     $("tc-film").textContent=p.film;
     $("tc-score").textContent=p.score;
-    $("btn-careful").disabled=phase!=="turn"||turnFlags.moved;
-    $("btn-fast").disabled=phase!=="turn"||turnFlags.moved||!!roundMod.noFast;
+    $("btn-careful").disabled=phase!=="turn"||turnFlags.droveDone||!!driving;
+    $("btn-fast").disabled=phase!=="turn"||turnFlags.droveDone||!!driving;
+    $("btn-stop").disabled=phase!=="turn"||!driving||!driving.moved;
     $("btn-photo").disabled=phase!=="turn"||turnFlags.shot||p.film<=0;
     $("btn-photo").textContent=`📷 Take Photo (${p.film})`;
     $("btn-end").disabled=phase!=="turn";
@@ -853,6 +829,21 @@ function render(){
     $("b5row").innerHTML=BIG5.map(sp=>
       `<span class="${p.big5.has(sp)?"got":""}" title="${SPECIES[sp].name}">${SPECIES[sp].emoji}</span>`).join("");
   }
+  // field guide — the manifest is public knowledge
+  const hiddenCount=k=>{
+    let n=0;
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(grid[r][c].hidden===k) n++;
+    return n;
+  };
+  $("guide").innerHTML=`<table>${Object.entries(SPECIES).map(([k,s])=>{
+    const wild=animals.filter(a=>a.sp===k).length, hid=hiddenCount(k);
+    return `<tr><td>${s.emoji} ${s.name}${s.big5?" ★":""}</td>
+      <td><span class="tag ${s.pred?"pred":"prey"}">${s.pred?"predator":"prey"}</span></td>
+      <td class="n">${s.v} pt</td>
+      <td class="n">${wild} wild · ${hid} hidden</td></tr>`;
+  }).join("")}</table>
+  <div class="mix">Tile mix (77): ${TILE_BAG.grass} grass · ${TILE_BAG.bush} acacia · ${TILE_BAG.marsh} marsh · ${TILE_BAG.water} water · ${TILE_BAG.rock} kopje. ★ = Big Five.</div>`;
+
   $("scorelist").innerHTML=players.map((q,i)=>`
     <div class="prow"><span class="dot" style="background:${q.color}"></span>
     ${q.name}${i===cur?" ◀":""} <span class="film">🎞️${q.film}</span>
@@ -867,8 +858,8 @@ function setupScreen(){
     showModal(`
       <h2>GOLDEN <span style="color:var(--gold)">HOUR</span></h2>
       <p style="font-style:italic">You are wildlife photographers with one roll of film each.
-      Drive the savanna, discover what hides beneath the grass, and choose your moments —
-      the light won't wait.</p>
+      Drive the savanna one tile at a time, discover what hides beneath the grass, and choose
+      your moments — the light won't wait, and neither will the animals.</p>
       <p><b>How many photographers?</b></p>
       <div class="pcount">${[2,3,4].map(n=>
         `<button data-n="${n}" class="${n===count?"sel":""}">${n}</button>`).join("")}</div>
@@ -895,7 +886,7 @@ function startGame(count,names){
     big5:new Set(), big5done:false,
     assignments:[pool.pop(),pool.pop()].map(a=>({...a,done:false})),
   }));
-  cur=0; round=1; roundMod={};
+  cur=0; round=1;
   deck=[]; EVENTS.forEach(e=>{for(let i=0;i<e.times;i++)deck.push(e);}); shuffle(deck);
   log(`🌅 Day 1, Dawn. ${count} jeeps roll out of camp. Golden Hour — photos +4!`);
   hideModal();
@@ -906,16 +897,14 @@ function startGame(count,names){
 /* ---------- wiring ---------- */
 $("board").addEventListener("click",e=>{
   const cell=e.target.closest(".cell");
-  if(!cell) return;
+  if(!cell||!driving||phase!=="turn") return;
   const r=+cell.dataset.r, c=+cell.dataset.c;
-  if(moveCtx){
-    const k=moveCtx.reach.key(r,c);
-    if(moveCtx.reach.distm.has(k)&&!(r===curP().r&&c===curP().c)) executeMove(r,c);
-    else { moveCtx=null; render(); hint("Drive cancelled."); }
-  }
+  const p=curP();
+  if(Math.abs(r-p.r)+Math.abs(c-p.c)===1&&canStepTo(p,r,c,driving.stepsLeft)) stepTo(r,c);
 });
-$("btn-careful").onclick=()=>beginMove(false);
-$("btn-fast").onclick=()=>beginMove(true);
+$("btn-careful").onclick=()=>beginDrive(false);
+$("btn-fast").onclick=()=>beginDrive(true);
+$("btn-stop").onclick=()=>{ if(driving) finishDrive(); };
 $("btn-photo").onclick=tryPhoto;
 $("btn-end").onclick=endTurn;
 const peek=$("btn-peek");
